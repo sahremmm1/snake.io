@@ -1,5 +1,243 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Snake Game</title></head>
-<body>Upload assets in same folder.</body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Game</title>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: black;
+        overflow: hidden;
+        font-family: 'Press Start 2P', cursive;
+        color: #00ff00;
+        user-select: none;
+        touch-action: none;
+    }
+
+    canvas {
+        display: block;
+        margin: 0;
+        padding: 0;
+    }
+
+    #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        font-size: 22px;
+        color: #00ff00;
+        display: none;
+    }
+</style>
+
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<div id="gameOver">GAME OVER<br><small>Tap to Restart</small></div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const gameOverDiv = document.getElementById("gameOver");
+
+// FULLSCREEN CANVAS
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.onresize = resizeCanvas;
+
+// GRID SYSTEM
+let scale = 25;  // size of snake cell
+let columns, rows;
+
+// LOAD HEAD IMAGES
+const head1 = new Image();
+const head2 = new Image();
+head1.src = "head1.png";
+head2.src = "head2.png";
+
+let headFrame = 0;
+setInterval(() => headFrame = 1 - headFrame, 500);
+
+let snake, apple, score = 0, gameRunning = false;
+
+// CALC GRID EVERY TIME
+function recalcGrid() {
+    columns = Math.floor(canvas.width / scale);
+    rows = Math.floor(canvas.height / scale);
+}
+
+class Snake {
+    constructor() {
+        this.snakeArray = [{ x: 5, y: 5 }];
+        this.direction = "RIGHT";
+    }
+
+    move() {
+        let head = { ...this.snakeArray[0] };
+
+        if (this.direction === "LEFT") head.x -= 1;
+        if (this.direction === "RIGHT") head.x += 1;
+        if (this.direction === "UP") head.y -= 1;
+        if (this.direction === "DOWN") head.y += 1;
+
+        this.snakeArray.unshift(head);
+
+        // EATING
+        if (head.x === apple.x && head.y === apple.y) {
+            score += 10;
+            apple = randomApple();
+        } else {
+            this.snakeArray.pop();
+        }
+    }
+
+    setDirection(dir) {
+        const opposite = {
+            LEFT: "RIGHT",
+            RIGHT: "LEFT",
+            UP: "DOWN",
+            DOWN: "UP"
+        };
+        if (dir !== opposite[this.direction]) this.direction = dir;
+    }
+
+    draw() {
+        recalcGrid();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // DRAW SNAKE
+        this.snakeArray.forEach((segment, index) => {
+
+            if (index === 0) {
+                // HEAD IMAGE
+                const img = headFrame === 0 ? head1 : head2;
+
+                let angle = 0;
+                if (this.direction === "LEFT") angle = Math.PI;
+                if (this.direction === "UP") angle = -Math.PI / 2;
+                if (this.direction === "DOWN") angle = Math.PI / 2;
+
+                ctx.save();
+                ctx.translate(segment.x * scale + scale / 2, segment.y * scale + scale / 2);
+                ctx.rotate(angle);
+                ctx.drawImage(img, -scale / 2, -scale / 2, scale, scale);
+                ctx.restore();
+
+            } else {
+                // BODY (brown circle)
+                ctx.fillStyle = "#8B4513";
+                ctx.beginPath();
+                ctx.arc(
+                    segment.x * scale + scale / 2,
+                    segment.y * scale + scale / 2,
+                    scale / 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        });
+
+        // APPLE
+        ctx.fillStyle = "red";
+        ctx.fillRect(apple.x * scale, apple.y * scale, scale, scale);
+
+        // SCORE TEXT
+        ctx.fillStyle = "#00ff00";
+        ctx.font = "18px 'Press Start 2P'";
+        ctx.fillText("SCORE: " + score, 20, 40);
+    }
+
+    checkCollision() {
+        const head = this.snakeArray[0];
+
+        if (head.x < 0 || head.x >= columns || head.y < 0 || head.y >= rows)
+            return true;
+
+        for (let i = 1; i < this.snakeArray.length; i++) {
+            if (this.snakeArray[i].x === head.x && this.snakeArray[i].y === head.y)
+                return true;
+        }
+        return false;
+    }
+}
+
+function randomApple() {
+    return {
+        x: Math.floor(Math.random() * columns),
+        y: Math.floor(Math.random() * rows)
+    };
+}
+
+function init() {
+    recalcGrid();
+    snake = new Snake();
+    apple = randomApple();
+    score = 0;
+    gameRunning = true;
+    gameOverDiv.style.display = "none";
+    gameLoop();
+}
+
+function gameLoop() {
+    if (!gameRunning) return;
+
+    snake.move();
+    if (snake.checkCollision()) {
+        gameRunning = false;
+        gameOverDiv.style.display = "block";
+        return;
+    }
+
+    snake.draw();
+    setTimeout(gameLoop, 100);
+}
+
+// TOUCH CONTROLS
+let startX = 0, startY = 0;
+
+window.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+
+    if (!gameRunning) init();
+});
+
+window.addEventListener("touchmove", e => {
+    let dx = e.touches[0].clientX - startX;
+    let dy = e.touches[0].clientY - startY;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+        snake.setDirection(dx > 0 ? "RIGHT" : "LEFT");
+    } else {
+        snake.setDirection(dy > 0 ? "DOWN" : "UP");
+    }
+});
+
+// KEYBOARD
+document.addEventListener("keydown", e => {
+    if (!gameRunning && e.key === "Enter") init();
+    if (e.key === "ArrowUp") snake.setDirection("UP");
+    if (e.key === "ArrowDown") snake.setDirection("DOWN");
+    if (e.key === "ArrowLeft") snake.setDirection("LEFT");
+    if (e.key === "ArrowRight") snake.setDirection("RIGHT");
+});
+
+// START
+init();
+</script>
+
+</body>
 </html>
