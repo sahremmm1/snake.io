@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        canvas {
+            border: 1px solid #000;
+            background-color: #fff;
+        }
+
+        .game-over {
+            font-size: 2rem;
+            color: red;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="300" height="300"></canvas>
+    <div id="gameOver" class="game-over">Game Over</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameOverDiv = document.getElementById('gameOver');
+        const scale = 10;
+        const rows = canvas.height / scale;
+        const columns = canvas.width / scale;
+
+        let snake;
+        let apple;
+        let score;
+
+        // Snake class
+        class Snake {
+            constructor() {
+                this.snakeArray = [{ x: 10, y: 10 }];
+                this.direction = 'RIGHT';
+            }
+
+            move() {
+                let head = { ...this.snakeArray[0] };
+
+                if (this.direction === 'LEFT') head.x -= 1;
+                if (this.direction === 'RIGHT') head.x += 1;
+                if (this.direction === 'UP') head.y -= 1;
+                if (this.direction === 'DOWN') head.y += 1;
+
+                this.snakeArray.unshift(head);
+
+                if (head.x === apple.x && head.y === apple.y) {
+                    score += 10;
+                    apple = randomApple();
+                } else {
+                    this.snakeArray.pop();
+                }
+            }
+
+            setDirection(newDirection) {
+                if (newDirection === 'LEFT' && this.direction !== 'RIGHT') this.direction = 'LEFT';
+                if (newDirection === 'RIGHT' && this.direction !== 'LEFT') this.direction = 'RIGHT';
+                if (newDirection === 'UP' && this.direction !== 'DOWN') this.direction = 'UP';
+                if (newDirection === 'DOWN' && this.direction !== 'UP') this.direction = 'DOWN';
+            }
+
+            draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                this.snakeArray.forEach((segment, index) => {
+                    ctx.fillStyle = index === 0 ? 'green' : 'gray';
+                    ctx.fillRect(segment.x * scale, segment.y * scale, scale, scale);
+                });
+
+                ctx.fillStyle = 'red';
+                ctx.fillRect(apple.x * scale, apple.y * scale, scale, scale);
+
+                ctx.fillStyle = 'black';
+                ctx.font = '16px Arial';
+                ctx.fillText('Score: ' + score, 10, canvas.height - 10);
+            }
+
+            checkCollision() {
+                const head = this.snakeArray[0];
+                if (head.x < 0 || head.x >= columns || head.y < 0 || head.y >= rows) {
+                    return true;
+                }
+                for (let i = 1; i < this.snakeArray.length; i++) {
+                    if (this.snakeArray[i].x === head.x && this.snakeArray[i].y === head.y) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        // Random apple generator
+        function randomApple() {
+            let x = Math.floor(Math.random() * columns);
+            let y = Math.floor(Math.random() * rows);
+            return { x, y };
+        }
+
+        function init() {
+            snake = new Snake();
+            apple = randomApple();
+            score = 0;
+            gameOverDiv.style.display = 'none';
+
+            function gameLoop() {
+                snake.move();
+                if (snake.checkCollision()) {
+                    gameOverDiv.style.display = 'block';
+                    return;
+                }
+                snake.draw();
+                setTimeout(gameLoop, 100);
+            }
+            gameLoop();
+        }
+
+        // Event listeners for mobile controls
+        window.addEventListener('touchstart', (e) => {
+            const touchStartX = e.touches[0].clientX;
+            const touchStartY = e.touches[0].clientY;
+
+            window.addEventListener('touchmove', (e) => {
+                const touchMoveX = e.touches[0].clientX;
+                const touchMoveY = e.touches[0].clientY;
+
+                if (Math.abs(touchMoveX - touchStartX) > Math.abs(touchMoveY - touchStartY)) {
+                    if (touchMoveX > touchStartX) {
+                        snake.setDirection('RIGHT');
+                    } else {
+                        snake.setDirection('LEFT');
+                    }
+                } else {
+                    if (touchMoveY > touchStartY) {
+                        snake.setDirection('DOWN');
+                    } else {
+                        snake.setDirection('UP');
+                    }
+                }
+            });
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') snake.setDirection('LEFT');
+            if (e.key === 'ArrowRight') snake.setDirection('RIGHT');
+            if (e.key === 'ArrowUp') snake.setDirection('UP');
+            if (e.key === 'ArrowDown') snake.setDirection('DOWN');
+        });
+
+        init();
+    </script>
+</body>
+</html>
