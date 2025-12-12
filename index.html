@@ -6,36 +6,36 @@
 <title>Snake Game</title>
 
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    html, body {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        background: black;
-        overflow: hidden;
-        font-family: 'Press Start 2P', cursive;
-        color: #00ff00;
-        user-select: none;
-        touch-action: none;
-    }
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+    font-family: 'Press Start 2P', cursive;
+    color: #00ff00;
+    user-select: none;
+    touch-action: none;
+}
 
-    canvas {
-        display: block;
-        margin: 0;
-        padding: 0;
-    }
+canvas {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
 
-    #gameOver {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        font-size: 22px;
-        color: #00ff00;
-        display: none;
-    }
+#gameOver {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 22px;
+    color: #00ff00;
+    display: none;
+}
 </style>
 
 </head>
@@ -45,277 +45,195 @@
 <div id="gameOver">GAME OVER<br><small>Tap to Restart</small></div>
 
 <script>
-/* ====== Smooth Snake — A1 (L: maximal smoothing, 12 steps/sec) ====== */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const gameOverDiv = document.getElementById("gameOver");
 
-// FULLSCREEN CANVAS
+let scale = 25;
+let columns = 0, rows = 0;
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     recalcGrid();
 }
-resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
 
-// GRID SYSTEM
-let scale = 25;               // размер клетки
-let columns = 0, rows = 0;
 function recalcGrid() {
     columns = Math.max(4, Math.floor(canvas.width / scale));
     rows = Math.max(4, Math.floor(canvas.height / scale));
 }
 
-// LOAD HEAD IMAGES (fallback рисование если не загружено)
+// Load head images (optional)
 const head1 = new Image();
 const head2 = new Image();
 head1.src = "head1.png";
 head2.src = "head2.png";
 let headFrame = 0;
-setInterval(() => headFrame = 1 - headFrame, 500);
+setInterval(()=> headFrame = 1 - headFrame, 500);
 
-// GAME STATE
+// Game state
 let snake, apple, score = 0, gameRunning = false;
-
-// FIXED LOGIC SPEED
-const snakeSpeed = 12;          // шагов в секунду (логика)
-const step = 1000 / snakeSpeed;  // ms между шагами
+const snakeSpeed = 12;
+const step = 1000 / snakeSpeed;
 let lastLogicTime = 0;
-let lastTickTimestamp = 0;
 
-// HELPERS
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function lerp(a,b,t){return a+(b-a)*t}
 
-// Snake class with prevCells for interpolation
 class Snake {
     constructor() {
-        this.cells = [{ x: 5, y: 5 }];
-        this.prevCells = [{ x: 5, y: 5 }];
+        this.cells = [{x:5,y:5}];
+        this.prevCells = [{x:5,y:5}];
         this.direction = "RIGHT";
     }
 
     move() {
-        this.prevCells = this.cells.map(c => ({ x: c.x, y: c.y }));
-
-        const head = { ...this.cells[0] };
-        if (this.direction === "LEFT") head.x -= 1;
-        if (this.direction === "RIGHT") head.x += 1;
-        if (this.direction === "UP") head.y -= 1;
-        if (this.direction === "DOWN") head.y += 1;
-
+        this.prevCells = this.cells.map(c=>({x:c.x,y:c.y}));
+        const head = {...this.cells[0]};
+        if(this.direction==="LEFT") head.x-=1;
+        if(this.direction==="RIGHT") head.x+=1;
+        if(this.direction==="UP") head.y-=1;
+        if(this.direction==="DOWN") head.y+=1;
         this.cells.unshift(head);
-
-        if (head.x === apple.x && head.y === apple.y) {
-            score += 10;
+        if(head.x===apple.x && head.y===apple.y){
+            score+=10;
             apple = randomApple();
-        } else {
-            this.cells.pop();
-        }
-
-        while (this.prevCells.length < this.cells.length) {
-            this.prevCells.push({ ...this.prevCells[this.prevCells.length - 1] });
-        }
+        } else {this.cells.pop()}
+        while(this.prevCells.length<this.cells.length)
+            this.prevCells.push({...this.prevCells[this.prevCells.length-1]});
     }
 
-    setDirection(dir) {
-        const opposite = { LEFT: "RIGHT", RIGHT: "LEFT", UP: "DOWN", DOWN: "UP" };
-        if (dir !== opposite[this.direction]) this.direction = dir;
+    setDirection(dir){
+        const opposite={LEFT:"RIGHT",RIGHT:"LEFT",UP:"DOWN",DOWN:"UP"};
+        if(dir!==opposite[this.direction]) this.direction=dir;
     }
 
-    checkCollision() {
-        const head = this.cells[0];
-        if (head.x < 0 || head.x >= columns || head.y < 0 || head.y >= rows) return true;
-        for (let i = 1; i < this.cells.length; i++) {
-            if (this.cells[i].x === head.x && this.cells[i].y === head.y) return true;
-        }
+    checkCollision(){
+        const head=this.cells[0];
+        if(head.x<0||head.x>=columns||head.y<0||head.y>=rows) return true;
+        for(let i=1;i<this.cells.length;i++)
+            if(this.cells[i].x===head.x&&this.cells[i].y===head.y) return true;
         return false;
     }
 
-    drawInterpolation(t, now) {
-        t = clamp(t, 0, 1);
-        const maxPulse = 0.10;
-        const pulseSpeed = 6;
-        const baseRadius = (scale / 2);
+    drawInterpolation(t, now){
+        t = clamp(t,0,1);
+        const maxPulse=0.10,pulseSpeed=6,baseRadius=scale/2;
+        ctx.shadowColor="rgba(0,0,0,0.7)";
+        ctx.shadowBlur=18; ctx.shadowOffsetX=0; ctx.shadowOffsetY=6;
 
-        ctx.shadowColor = "rgba(0,0,0,0.7)";
-        ctx.shadowBlur = 18;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 6;
-
-        // Apple
+        // apple
         ctx.save();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "red";
-        ctx.fillRect(apple.x * scale + 2, apple.y * scale + 2, scale - 4, scale - 4);
+        ctx.shadowBlur=0; ctx.fillStyle="red";
+        ctx.fillRect(apple.x*scale+2,apple.y*scale+2,scale-4,scale-4);
         ctx.restore();
 
-        // Draw segments
-        for (let i = this.cells.length - 1; i >= 0; i--) {
-            const prev = this.prevCells[i] || this.cells[i];
-            const cur = this.cells[i];
-            const phaseLag = clamp(i * 0.06, 0, 0.4);
-            const tt = clamp(t - phaseLag, 0, 1);
-            const px = lerp(prev.x, cur.x, tt) * scale + scale / 2;
-            const py = lerp(prev.y, cur.y, tt) * scale + scale / 2;
-
-            const pulsePhase = now / 1000 * pulseSpeed + i * 0.4;
-            const pulse = 1 + Math.sin(pulsePhase) * maxPulse * (1 - i / (this.cells.length + 2));
-            const r = baseRadius * pulse;
-
-            const bodyHue = 30;
-            const saturation = 60 - i * 2;
-            const lightness = 35 + i * 0.6;
-            ctx.fillStyle = `hsl(${bodyHue}, ${clamp(saturation, 30, 70)}%, ${clamp(lightness, 20, 50)}%)`;
-
-            ctx.beginPath();
-            ctx.arc(px, py, r, 0, Math.PI * 2);
-            ctx.fill();
+        for(let i=this.cells.length-1;i>=0;i--){
+            const prev=this.prevCells[i]||this.cells[i];
+            const cur=this.cells[i];
+            const phaseLag=clamp(i*0.06,0,0.4);
+            const tt=clamp(t-phaseLag,0,1);
+            const px=lerp(prev.x,cur.x,tt)*scale+scale/2;
+            const py=lerp(prev.y,cur.y,tt)*scale+scale/2;
+            const pulsePhase=now/1000*pulseSpeed+i*0.4;
+            const pulse=1+Math.sin(pulsePhase)*maxPulse*(1-i/(this.cells.length+2));
+            const r=baseRadius*pulse;
+            const bodyHue=30;
+            const saturation=60-i*2;
+            const lightness=35+i*0.6;
+            ctx.fillStyle=`hsl(${bodyHue},${clamp(saturation,30,70)}%,${clamp(lightness,20,50)}%)`;
+            ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill();
         }
 
-        // Head
-        const headPrev = this.prevCells[0] || this.cells[0];
-        const headCur = this.cells[0];
-        const hx = lerp(headPrev.x, headCur.x, t) * scale + scale / 2;
-        const hy = lerp(headPrev.y, headCur.y, t) * scale + scale / 2;
+        // head
+        const headPrev=this.prevCells[0]||this.cells[0];
+        const headCur=this.cells[0];
+        const hx=lerp(headPrev.x,headCur.x,t)*scale+scale/2;
+        const hy=lerp(headPrev.y,headCur.y,t)*scale+scale/2;
 
-        let angle = 0;
-        if (this.direction === "LEFT") angle = Math.PI;
-        if (this.direction === "UP") angle = -Math.PI / 2;
-        if (this.direction === "DOWN") angle = Math.PI / 2;
+        let angle=0;
+        if(this.direction==="LEFT") angle=Math.PI;
+        if(this.direction==="UP") angle=-Math.PI/2;
+        if(this.direction==="DOWN") angle=Math.PI/2;
 
         ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 20;
-        ctx.shadowOffsetY = 6;
+        ctx.shadowColor="rgba(0,0,0,0.8)";
+        ctx.shadowBlur=20; ctx.shadowOffsetY=6;
 
-        const img = headFrame === 0 ? head1 : head2;
-        if (img && img.complete && img.naturalWidth !== 0) {
-            ctx.translate(hx, hy);
-            ctx.rotate(angle);
-            const s = scale * 0.95;
-            ctx.drawImage(img, -s / 2, -s / 2, s, s);
+        if(head1.complete && head2.complete && head1.naturalWidth!==0 && head2.naturalWidth!==0){
+            const img=headFrame===0?head1:head2;
+            ctx.translate(hx,hy); ctx.rotate(angle);
+            const s=scale*0.95; ctx.drawImage(img,-s/2,-s/2,s,s);
         } else {
-            ctx.translate(hx, hy);
-            ctx.rotate(angle);
-            ctx.fillStyle = "#00ff00";
-            const w = scale * 0.9, h = scale * 0.9;
-            ctx.beginPath();
-            ctx.roundRect(-w / 2, -h / 2, w, h, 6);
-            ctx.fill();
+            ctx.translate(hx,hy); ctx.rotate(angle);
+            ctx.fillStyle="#00ff00";
+            const w=scale*0.9,h=scale*0.9;
+            ctx.fillRect(-w/2,-h/2,w,h);
         }
         ctx.restore();
 
-        // Score
-        ctx.save();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "#00ff00";
-        ctx.font = "18px 'Press Start 2P'";
-        ctx.fillText("SCORE: " + score, 20, 40);
-        ctx.restore();
+        // score
+        ctx.save(); ctx.shadowBlur=0; ctx.fillStyle="#00ff00";
+        ctx.font="18px 'Press Start 2P'";
+        ctx.fillText("SCORE: "+score,20,40); ctx.restore();
     }
 }
 
-if (!CanvasRenderingContext2D.prototype.roundRect) {
-    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-        if (w < 2 * r) r = w / 2;
-        if (h < 2 * r) r = h / 2;
-        this.beginPath();
-        this.moveTo(x + r, y);
-        this.arcTo(x + w, y, x + w, y + h, r);
-        this.arcTo(x + w, y + h, x, y + h, r);
-        this.arcTo(x, y + h, x, y, r);
-        this.arcTo(x, y, x + w, y, r);
-        this.closePath();
-        return this;
-    };
-}
+function randomApple(){return {x:Math.floor(Math.random()*columns),y:Math.floor(Math.random()*rows)}}
 
-function randomApple() {
-    return {
-        x: Math.floor(Math.random() * columns),
-        y: Math.floor(Math.random() * rows)
-    };
-}
-
-function init() {
+function init(){
     recalcGrid();
-    snake = new Snake();
-    apple = randomApple();
-    score = 0;
-    gameRunning = true;
-    gameOverDiv.style.display = "none";
-    lastLogicTime = 0;
-    lastTickTimestamp = performance.now();
+    snake=new Snake();
+    apple=randomApple();
+    score=0;
+    gameRunning=true;
+    gameOverDiv.style.display="none";
+    lastLogicTime=0;
 }
 
-function gameLoop(timestamp) {
-    if (!gameRunning) return;
-
-    if (!lastLogicTime) lastLogicTime = timestamp;
-
-    while (timestamp - lastLogicTime >= step) {
-        lastLogicTime += step;
-        lastTickTimestamp = lastLogicTime;
-
+function gameLoop(timestamp){
+    if(!gameRunning) return;
+    if(!lastLogicTime) lastLogicTime=timestamp;
+    while(timestamp-lastLogicTime>=step){
+        lastLogicTime+=step;
         snake.move();
-        if (snake.checkCollision()) {
-            gameRunning = false;
-            gameOverDiv.style.display = "block";
+        if(snake.checkCollision()){
+            gameRunning=false;
+            gameOverDiv.style.display="block";
             return;
         }
-
-        apple.x = clamp(apple.x, 0, columns - 1);
-        apple.y = clamp(apple.y, 0, rows - 1);
+        apple.x=clamp(apple.x,0,columns-1);
+        apple.y=clamp(apple.y,0,rows-1);
     }
-
-    const t = (timestamp - lastLogicTime) / step;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    snake.drawInterpolation(t, timestamp);
-
+    const t=(timestamp-lastLogicTime)/step;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    snake.drawInterpolation(t,timestamp);
     requestAnimationFrame(gameLoop);
 }
 
-// TOUCH
-let startX = 0, startY = 0;
-window.addEventListener("touchstart", e => {
-    const t = e.touches[0];
-    startX = t.clientX;
-    startY = t.clientY;
-    if (!gameRunning) {
-        init();
-        requestAnimationFrame(gameLoop);
-    }
+// Controls
+let startX=0,startY=0;
+window.addEventListener("touchstart",e=>{
+    const t=e.touches[0]; startX=t.clientX; startY=t.clientY;
+    if(!gameRunning){init(); requestAnimationFrame(gameLoop);}
 });
-window.addEventListener("touchmove", e => {
-    if (!snake) return;
-    const t = e.touches[0];
-    const dx = t.clientX - startX;
-    const dy = t.clientY - startY;
-    if (Math.abs(dx) > Math.abs(dy)) {
-        snake.setDirection(dx > 0 ? "RIGHT" : "LEFT");
-    } else {
-        snake.setDirection(dy > 0 ? "DOWN" : "UP");
-    }
+window.addEventListener("touchmove",e=>{
+    if(!snake) return;
+    const t=e.touches[0]; const dx=t.clientX-startX; const dy=t.clientY-startY;
+    if(Math.abs(dx)>Math.abs(dy)) snake.setDirection(dx>0?"RIGHT":"LEFT");
+    else snake.setDirection(dy>0?"DOWN":"UP");
+});
+document.addEventListener("keydown",e=>{
+    if(e.key==="Enter" && !gameRunning){init();requestAnimationFrame(gameLoop); return;}
+    if(!snake) return;
+    if(e.key==="ArrowUp"||e.key==="w") snake.setDirection("UP");
+    if(e.key==="ArrowDown"||e.key==="s") snake.setDirection("DOWN");
+    if(e.key==="ArrowLeft"||e.key==="a") snake.setDirection("LEFT");
+    if(e.key==="ArrowRight"||e.key==="d") snake.setDirection("RIGHT");
 });
 
-// KEYBOARD
-document.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !gameRunning) {
-        init();
-        requestAnimationFrame(gameLoop);
-        return;
-    }
-    if (!snake) return;
-    if (e.key === "ArrowUp" || e.key === "w") snake.setDirection("UP");
-    if (e.key === "ArrowDown" || e.key === "s") snake.setDirection("DOWN");
-    if (e.key === "ArrowLeft" || e.key === "a") snake.setDirection("LEFT");
-    if (e.key === "ArrowRight" || e.key === "d") snake.setDirection("RIGHT");
-});
-
-// START GAME
 init();
 requestAnimationFrame(gameLoop);
 </script>
